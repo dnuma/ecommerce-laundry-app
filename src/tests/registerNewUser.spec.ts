@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { RegistrationPage } from "../lib/pages/registration.page";
 import { NewUser } from "../lib/interfaces/newUser";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
