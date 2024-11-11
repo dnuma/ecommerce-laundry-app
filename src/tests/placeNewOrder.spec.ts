@@ -46,6 +46,22 @@ test.describe(
         expect(page.url()).toContain("delivery-speed");
       });
 
+      
+      await test.step("Select Delivery Speed", async () => {
+        await placeOrderPage.selectDeliverySpeed(deliverySpeed);
+        expect(page.url()).toContain("laundry-preferences");
+      });
+
+      await test.step("Select Laundry Care", async () => {
+        await placeOrderPage.selectLaundryCare(detergent);
+        expect(page.url()).toContain("bag-count");
+      });
+
+      await test.step("Add Bags", async () => {
+        await placeOrderPage.addBags(bagCount, typeOfBag);
+        expect(page.url()).toContain("oversized-items");
+      });
+
     });
 
   }

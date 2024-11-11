@@ -101,4 +101,31 @@ export class PlaceOrderPage extends BasePage {
     await this.page.waitForSelector(`h2:has-text("Laundry Care")`);
   }
 
+
+  async selectLaundryCare(detergent: string) {
+    const typeOfDetergent = this.page.getByRole("radio", {
+      name: `${detergent}`,
+    });
+    const laundryContinueBtn = this.page.locator(
+      "#preferences-continue-button"
+    );
+    await this.forcedClick(this.selectDetergent);
+    await this.forcedClick(typeOfDetergent);
+    await this.forcedClick(this.doneBtn);
+    await this.forcedClick(laundryContinueBtn);
+    await this.page.waitForSelector(`h2:has-text("Bag Count")`);
+  }
+
+    async addBags(count: number, type: string) {
+      const increaseBagCountBtn = this.page
+        .locator(`#stepper-${type}`)
+        .getByLabel("plus_custom");
+      const bagContinueBtn = this.page.locator("#bag-continue-button");
+      await this.forcedClick(increaseBagCountBtn, count);
+      await this.forcedClick(bagContinueBtn);
+      await this.page.waitForSelector(
+        `h2:has-text("Oversized Items (Optional)")`
+      );
+    }
+
 }
