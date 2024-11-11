@@ -128,4 +128,48 @@ export class PlaceOrderPage extends BasePage {
       );
     }
 
+  async addOversizedItems(count: number) {
+    const increaseOversizedItemsBtn = this.page.getByRole("button", {
+      name: "plus_custom",
+    });
+    const oversizedContinueBtn = this.page.locator(
+      "#oversized-continue-button"
+    );
+
+    // The count in click() won't work with this button, must be manually clicked
+    for (let i = 0; i < count; i++) {
+      await this.forcedClick(increaseOversizedItemsBtn);
+    }
+    await this.forcedClick(oversizedContinueBtn);
+  }
+
+ 
+  async acceptProtectLaundryPros() {
+    const protectLaundryProsContinueBtn = this.page.locator(
+      "#drawer-modal-continue-button"
+    );
+    const checkboxCount = await this.laundryProsCheckboxes.count();
+    for (let i = 0; i < checkboxCount; i++) {
+      await this.forcedClick(this.laundryProsCheckboxes.nth(i));
+    }
+    await this.forcedClick(protectLaundryProsContinueBtn);
+
+    // Skipping the preferred Laundry Pros
+    const preferredLaundryProsContinueBtn = this.page.locator(
+      "#preferred-continue-button"
+    );
+    await this.forcedClick(preferredLaundryProsContinueBtn);
+    await this.forcedClick(preferredLaundryProsContinueBtn.nth(1));
+
+    await this.page.waitForSelector(`h2:has-text("Coverage")`);
+  }
+
+  async selectCoverage(coverage: string) {
+    const coverageRadio = this.page.getByText(`${coverage}`, { exact: true });
+    const coverageContinueBtn = this.page.locator("#coverage-continue-button");
+    await this.forcedClick(coverageRadio);
+    await this.forcedClick(coverageContinueBtn);
+    await this.page.waitForSelector("#estimated-order-cost");
+  }
+
 }
