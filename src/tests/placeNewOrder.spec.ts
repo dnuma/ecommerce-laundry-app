@@ -62,6 +62,24 @@ test.describe(
         expect(page.url()).toContain("oversized-items");
       });
 
+      await test.step("Add Oversized Items", async () => {
+        const title = page.getByRole("heading", {
+          name: "Protecting Laundry Pros",
+        });
+        await placeOrderPage.addOversizedItems(oversizedItems);
+        await expect(title).toBeVisible();
+      });
+
+      await test.step("Protect Laundry Pros modal", async () => {
+        await placeOrderPage.acceptProtectLaundryPros();
+        expect(page.url()).toContain("coverage");
+      });
+
+      await test.step("Coverage", async () => {
+        await placeOrderPage.selectCoverage(coverage);
+        expect(page.url()).toContain("review-order");
+      });
+
     });
 
   }
