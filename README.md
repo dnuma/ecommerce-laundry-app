@@ -1,6 +1,6 @@
 # Ecommerce Laundry App
 
-Web App application testing created using Playwright + Typescript. This project is a custom made ecommerce website, that includes different styles of locators and selectors used to find the proper element.
+This project showcases automated testing for a custom-built e-commerce laundry application. Developed with Playwright and Typescript, the tests utilize various locator strategies and selectors to effectively target elements within the web application.
 
 ## Features
 
