@@ -1,6 +1,8 @@
 require("dotenv").config();
 import { test, expect } from "@playwright/test";
 import { PlaceOrderPage } from "../lib/pages/placeOrder.page";
+import { CreditCard } from "../lib/interfaces/creditCard";
+import { Total } from "../lib/interfaces/total";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -46,7 +48,6 @@ test.describe(
         expect(page.url()).toContain("delivery-speed");
       });
 
-      
       await test.step("Select Delivery Speed", async () => {
         await placeOrderPage.selectDeliverySpeed(deliverySpeed);
         expect(page.url()).toContain("laundry-preferences");
@@ -80,6 +81,73 @@ test.describe(
         expect(page.url()).toContain("review-order");
       });
 
+      await test.step("Review Order", async () => {
+        // Format the strings
+        const capitalizedTypeOfBag =
+          typeOfBag.charAt(0).toUpperCase() + typeOfBag.slice(1);
+        const bags = `${bagCount.toString()} ${capitalizedTypeOfBag}`;
+        const oversized = `${oversizedItems.toString()} Oversized Items`;
+        const addressLine = 0;
+        const spotLine = 1;
+
+        // Calculate the totals
+        const total: Total = {
+          typeOfBag: typeOfBag,
+          bagCount: bagCount,
+          oversizedItems: oversizedItems,
+          coverage: coverage,
+        };
+
+        const totalsToPay = placeOrderPage.calculateOrder(total);
+        console.log("totalsToPay", totalsToPay);
+
+        // Check the review order page
+        expect
+          .soft(
+            page
+              .locator("#review-card-pickup-wrapper article ul li")
+              .nth(addressLine)
+          )
+          .toContainText(address);
+        expect
+          .soft(
+            page
+              .locator("#review-card-pickup-wrapper article ul li")
+              .nth(spotLine)
+          )
+          .toContainText(spot);
+        expect
+          .soft(page.locator("#review-card-laundry-wrapper article ul li"))
+          .toContainText(detergent);
+        expect
+          .soft(page.locator("#review-card-bag-wrapper article ul li"))
+          .toContainText(bags);
+        expect
+          .soft(page.locator("#review-card-oversized-wrapper article ul li"))
+          .toContainText(oversized);
+        expect
+          .soft(page.locator("#review-card-coverage-wrapper article"))
+          .toContainText(coverage);
+
+        expect.soft(page.getByText(`${totalsToPay.grandTotal}`)).toBeVisible();
+        expect
+          .soft(page.getByText(`${totalsToPay.preAuthorizedTotal}`))
+          .toBeVisible();
+      });
+
+      await test.step("Complete the order", async () => {
+        // Stripe's testing card number
+        const cardInfo: CreditCard = {
+          cardNumber: "4242424242424242",
+          expiration: "1233",
+          cvc: "123",
+          country: "US",
+          postal: "99501",
+        };
+
+        await placeOrderPage.placeOrder(cardInfo);
+        await expect(placeOrderPage.newOrderBtn).toBeVisible();
+      });
     });
 
   }

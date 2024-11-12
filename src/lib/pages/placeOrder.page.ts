@@ -1,8 +1,10 @@
 import type { Page, Locator, FrameLocator } from "@playwright/test";
 import { BasePage } from "./base.page";
+import { CreditCard } from "../interfaces/creditCard";
+import { Total } from "../interfaces/total";
 
 export class PlaceOrderPage extends BasePage {
-  readonly page: Page;  
+  readonly page: Page;
   readonly newOrderBtn: Locator;
   readonly startNewOrderBtn: Locator;
   readonly selectProfile: Locator;
@@ -13,6 +15,16 @@ export class PlaceOrderPage extends BasePage {
   readonly address: Locator;
   readonly suggestedAddress: Locator;
   readonly pickupSpot: Locator;
+  readonly selectDetergent: Locator;
+  readonly laundryProsCheckboxes: Locator;
+
+  // Stripe Locators
+  readonly stripeIFrame: FrameLocator;
+  readonly cardNumber: Locator;
+  readonly expiration: Locator;
+  readonly cvc: Locator;
+  readonly postal: Locator;
+  readonly country: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -29,6 +41,20 @@ export class PlaceOrderPage extends BasePage {
     this.address = this.page.locator("#Line1");
     this.suggestedAddress = this.page.locator("ul.suggestions-list li").first();
     this.pickupSpot = this.page.locator("#pickup-location-select");
+    this.selectDetergent = this.page.getByText("Select DetergentSelect an");
+    this.laundryProsCheckboxes = this.page.locator(
+      `form poplin-checkbox[aria-label="drawer-checkbox"]`
+    );
+
+    // Stripe Locators
+    this.stripeIFrame = this.page.frameLocator(
+      `iframe[title="Secure payment input frame"]`
+    );
+    this.cardNumber = this.stripeIFrame.locator("#Field-numberInput");
+    this.expiration = this.stripeIFrame.locator("#Field-expiryInput");
+    this.cvc = this.stripeIFrame.locator("#Field-cvcInput");
+    this.postal = this.stripeIFrame.locator("#Field-postalCodeInput");
+    this.country = this.stripeIFrame.locator("#Field-countryInput");
   }
 
   /**
@@ -46,7 +72,6 @@ export class PlaceOrderPage extends BasePage {
     await this.forcedClick(this.startNewOrderBtn);
   }
 
-  
   /**
    * Creates a user profile by setting a profile name and address, selecting pickup location, and saving the profile.
    * @param {string} address - Address to associate with the new profile.
@@ -101,7 +126,10 @@ export class PlaceOrderPage extends BasePage {
     await this.page.waitForSelector(`h2:has-text("Laundry Care")`);
   }
 
-
+  /**
+   * Selects a laundry care option based on the specified detergent type.
+   * @param {string} detergent - The type of detergent to be used.
+   */
   async selectLaundryCare(detergent: string) {
     const typeOfDetergent = this.page.getByRole("radio", {
       name: `${detergent}`,
@@ -116,18 +144,27 @@ export class PlaceOrderPage extends BasePage {
     await this.page.waitForSelector(`h2:has-text("Bag Count")`);
   }
 
-    async addBags(count: number, type: string) {
-      const increaseBagCountBtn = this.page
-        .locator(`#stepper-${type}`)
-        .getByLabel("plus_custom");
-      const bagContinueBtn = this.page.locator("#bag-continue-button");
-      await this.forcedClick(increaseBagCountBtn, count);
-      await this.forcedClick(bagContinueBtn);
-      await this.page.waitForSelector(
-        `h2:has-text("Oversized Items (Optional)")`
-      );
-    }
+  /**
+   * Adds a specified number of bags for the order, based on the bag type.
+   * @param {number} count - The number of bags to add.
+   * @param {string} type - The type of bags (e.g., "Laundry" or "Dry Cleaning").
+   */
+  async addBags(count: number, type: string) {
+    const increaseBagCountBtn = this.page
+      .locator(`#stepper-${type}`)
+      .getByLabel("plus_custom");
+    const bagContinueBtn = this.page.locator("#bag-continue-button");
+    await this.forcedClick(increaseBagCountBtn, count);
+    await this.forcedClick(bagContinueBtn);
+    await this.page.waitForSelector(
+      `h2:has-text("Oversized Items (Optional)")`
+    );
+  }
 
+  /**
+   * Adds a specified number of oversized items to the order and proceeds to the next step.
+   * @param {number} count - The number of oversized items to add.
+   */
   async addOversizedItems(count: number) {
     const increaseOversizedItemsBtn = this.page.getByRole("button", {
       name: "plus_custom",
@@ -143,7 +180,9 @@ export class PlaceOrderPage extends BasePage {
     await this.forcedClick(oversizedContinueBtn);
   }
 
- 
+  /**
+   * Accepts the terms for protecting laundry pros by selecting each checkbox and proceeding.
+   */
   async acceptProtectLaundryPros() {
     const protectLaundryProsContinueBtn = this.page.locator(
       "#drawer-modal-continue-button"
@@ -164,6 +203,10 @@ export class PlaceOrderPage extends BasePage {
     await this.page.waitForSelector(`h2:has-text("Coverage")`);
   }
 
+  /**
+   * Selects a specified coverage option for the order.
+   * @param {string} coverage - The coverage option (e.g., "Basic", "Premium").
+   */
   async selectCoverage(coverage: string) {
     const coverageRadio = this.page.getByText(`${coverage}`, { exact: true });
     const coverageContinueBtn = this.page.locator("#coverage-continue-button");
@@ -172,4 +215,91 @@ export class PlaceOrderPage extends BasePage {
     await this.page.waitForSelector("#estimated-order-cost");
   }
 
+  /**
+   * Calculates the order total based on the bag and item types, coverage, and fees.
+   * @param {Total} total - An object containing the order details.
+   * @returns {{grandTotal: string, preAuthorizedTotal: string}} The calculated grand total and pre-authorized total, both formatted as currency strings.
+   */
+  calculateOrder(total: Total): {
+    grandTotal: string;
+    preAuthorizedTotal: string;
+  } {
+    const smallPrice = 1100;
+    const regularPrice = 1400;
+    const largePrice = 1900;
+    const oversizedPrice = 800;
+
+    const basicCoverage = 0;
+    const premiumCovrage = 250;
+    const premiumPlusCoverage = 475;
+
+    const trustFee = 300;
+
+    const preAuthPriceIncrease = 1.4;
+
+    let grandTotal = 0;
+
+    switch (total.typeOfBag) {
+      case "small":
+        grandTotal += total.bagCount * smallPrice;
+        break;
+      case "regular":
+        grandTotal += total.bagCount * regularPrice;
+        break;
+      case "large":
+        grandTotal += total.bagCount * largePrice;
+        break;
+    }
+
+    grandTotal += total.oversizedItems * oversizedPrice;
+
+    switch (total.coverage) {
+      case "Basic":
+        grandTotal += basicCoverage;
+        break;
+      case "Premium":
+        grandTotal += premiumCovrage;
+        break;
+      case "Premium Plus":
+        grandTotal += premiumPlusCoverage;
+        break;
+    }
+
+    grandTotal += trustFee;
+    const preAuthorizedTotal = grandTotal * preAuthPriceIncrease;
+
+    return {
+      grandTotal: this.formatToCurrency(grandTotal),
+      preAuthorizedTotal: this.formatToCurrency(preAuthorizedTotal),
+    };
+  }
+
+  /**
+   * Formats a given amount as a currency string.
+   * @param {number} amount - The amount to format.
+   * @returns {string} The formatted currency string.
+   */
+  formatToCurrency(amount: number): string {
+    return `$${(amount / 100).toFixed(2)}`;
+  }
+
+  /**
+   * Places an order by entering payment details and confirming the order.
+   * @param {CreditCard} creditCard - An object containing credit card details.
+   */
+  async placeOrder(creditCard: CreditCard) {
+    const placeOrderBtn = this.page.locator("#place-order-button");
+    const striplePlaceOrderBtn = this.page.locator("#stripe-pay-button");
+
+    await this.page.waitForTimeout(2000); // To avoid errors with the spinner
+    await this.forcedClick(placeOrderBtn);
+
+    await this.cardNumber.fill(creditCard.cardNumber);
+    await this.expiration.fill(creditCard.expiration);
+    await this.cvc.fill(creditCard.cvc);
+    await this.country.selectOption({ value: creditCard.country });
+    await this.postal.fill(creditCard.postal || "");
+
+    await this.forcedClick(striplePlaceOrderBtn);
+  }
 }
