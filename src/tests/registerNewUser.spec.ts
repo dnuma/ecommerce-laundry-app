@@ -31,10 +31,5 @@ test.describe(
       await registrationPage.registerNewUser(userInfo);
       await expect(registrationPage.menuAccount).toBeVisible();
     });
-
-
-    test.skip("Register with phone", async ({ page }) => {
-      // Todo: Implement test
-    });
   }
 );
